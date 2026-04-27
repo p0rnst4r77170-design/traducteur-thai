@@ -2,6 +2,9 @@
   "name": "traducteur-thai",
   "version": "1.0.0",
   "main": "server.js",
+  "dependencies": {
+    "thai-romanization": "^1.1.0"
+  },
   "scripts": {
     "start": "node server.js"
   }
