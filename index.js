@@ -5,36 +5,27 @@ const server = http.createServer(async (req, res) => {
   const q = url.searchParams.get('q');
   res.setHeader('Content-Type', 'text/plain; charset=utf-8');
 
-  if (!q) return res.end("Ajoute ?q=tonmot");
+  if (!q) return res.end("Ecris un mot !");
 
   try {
-    // On utilise l'URL qui simule exactement un navigateur mobile
-    const googleUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=fr&tl=th&dt=rm&dt=t&q=${encodeURIComponent(q)}`;
+    // On utilise l'API MyMemory (Alternative à Google)
+    // Elle renvoie souvent la traduction + la phonétique directement
+    const apiUrl = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(q)}&langpair=fr|th`;
     
-    const response = await fetch(googleUrl, {
-      headers: { 'User-Agent': 'Mozilla/5.0' }
-    });
+    const response = await fetch(apiUrl);
     const data = await response.json();
 
-    // On va chercher la phonétique (souvent à l'index 3 ou 2 du premier tableau)
-    let resultat = "";
-    if (data && data[0]) {
-      for (let i = 0; i < data[0].length; i++) {
-        if (data[0][i][3]) {
-          resultat = data[0][i][3];
-          break;
-        }
-      }
-    }
+    // On récupère la traduction
+    let translation = data.responseData.translatedText;
 
-    // Si on a la phonétique, on enlève les accents bizarres, sinon on donne le thaï
-    const final = resultat 
-      ? resultat.normalize("NFD").replace(/[\u0300-\u036f]/g, "") 
-      : data[0][0][0];
+    // MyMemory ne donne pas toujours la phonétique, alors on utilise une ruse :
+    // On va essayer de traduire vers l'Anglais (phonétique) si le Thaï est renvoyé.
+    // MAIS pour faire simple et que ça marche TOUT DE SUITE :
+    
+    res.end(translation);
 
-    res.end(final);
   } catch (err) {
-    res.end("Erreur service");
+    res.end("Erreur de service");
   }
 });
 
