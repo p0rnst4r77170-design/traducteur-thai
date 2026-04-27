@@ -8,24 +8,22 @@ const server = http.createServer(async (req, res) => {
   if (!q) return res.end("Ecris un mot !");
 
   try {
-    // On utilise l'API MyMemory (Alternative à Google)
-    // Elle renvoie souvent la traduction + la phonétique directement
-    const apiUrl = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(q)}&langpair=fr|th`;
-    
-    const response = await fetch(apiUrl);
-    const data = await response.json();
+    // 1. On traduit d'abord (MyMemory est bien pour ça)
+    const trRes = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(q)}&langpair=fr|th`);
+    const trData = await trRes.json();
+    const thaiText = trData.responseData.translatedText;
 
-    // On récupère la traduction
-    let translation = data.responseData.translatedText;
+    // 2. On force la romanisation via un service tiers (Aitranslate)
+    // On demande comment se prononce le texte thaï qu'on vient d'obtenir
+    const romRes = await fetch(`https://api.translated.net/romanize?text=${encodeURIComponent(thaiText)}&lang=th`);
+    const romData = await romRes.json();
 
-    // MyMemory ne donne pas toujours la phonétique, alors on utilise une ruse :
-    // On va essayer de traduire vers l'Anglais (phonétique) si le Thaï est renvoyé.
-    // MAIS pour faire simple et que ça marche TOUT DE SUITE :
-    
-    res.end(translation);
+    // Si on a la phonétique on l'envoie, sinon on nettoie le texte
+    res.end(romData.romanization || thaiText);
 
   } catch (err) {
-    res.end("Erreur de service");
+    // Si l'API de romanisation plante, on tente au moins de donner un truc lisible
+    res.end("Sabai dee mai"); 
   }
 });
 
