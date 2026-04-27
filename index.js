@@ -1,5 +1,4 @@
 const http = require('http');
-const romanize = require('thai-romanization');
 
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://${req.headers.host}`);
@@ -9,21 +8,29 @@ const server = http.createServer(async (req, res) => {
   if (!q) return res.end("Ecris un mot !");
 
   try {
-    // 1. On traduit en Thaï (MyMemory est gratuit et illimité)
-    const trRes = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(q)}&langpair=fr|th`);
-    const trData = await trRes.json();
-    const thaiText = trData.responseData.translatedText;
-
-    // 2. On transforme le Thaï en phonétique nous-mêmes
-    const phonetique = romanize(thaiText);
-
-    // 3. On nettoie les petits accents pour Twitch
-    const final = phonetique.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    // On utilise l'API Google avec le client 'gtx' et le paramètre 'rm' pour la phonétique
+    const googleUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=fr&tl=th&dt=rm&dt=t&q=${encodeURIComponent(q)}`;
     
-    res.end(final);
+    const response = await fetch(googleUrl);
+    const data = await response.json();
+
+    // On cherche la phonétique dans la réponse (généralement à l'index 1 du premier groupe)
+    let phonetique = "";
+    if (data && data[0] && data[0][1]) {
+        phonetique = data[0][1][3] || data[0][0][1];
+    }
+
+    if (phonetique) {
+      // On retire les accents bizarres pour que ce soit lisible sur Twitch
+      const final = phonetique.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+      res.end(final);
+    } else {
+      // Si vraiment Google boude, on donne le mot thaï brut au lieu d'une erreur
+      res.end(data[0][0][0]);
+    }
 
   } catch (err) {
-    res.end("Erreur");
+    res.end("Service indisponible");
   }
 });
 
