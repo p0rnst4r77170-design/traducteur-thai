@@ -3,22 +3,30 @@ module.exports = async (req, res) => {
   if (!q) return res.send("Ecris un mot !");
 
   try {
-    // On appelle l'API Google Translate "interne" qui donne la phonétique
-    const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=fr&tl=th&dt=rm&dt=t&q=${encodeURIComponent(q)}`;
+    // On appelle une URL différente qui est connue pour renvoyer la phonétique plus facilement
+    const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=fr&tl=th&dt=t&dt=rm&q=${encodeURIComponent(q)}`;
     
-    const response = await fetch(url);
+    const response = await fetch(url, {
+      headers: { 'User-Agent': 'Mozilla/5.0' }
+    });
     const data = await response.json();
 
-    // data[0][1][3] est l'emplacement standard de la phonétique (romanization)
-    const phonetique = data[0][1] ? data[0][1][3] : null;
-
-    if (phonetique) {
-      res.send(phonetique);
-    } else {
-      // Si pas de phonétique, on donne la traduction thaïe
-      res.send(data[0][0][0]);
+    // Analyse de la réponse complexe de Google :
+    // On cherche la ligne qui contient du texte latin au milieu du Thaï
+    let phonetique = "";
+    
+    if (data[0]) {
+      data[0].forEach(partie => {
+        if (partie[3]) { // Le 4ème élément du tableau est souvent la phonétique
+          phonetique = partie[3];
+        }
+      });
     }
+
+    // Si on a trouvé la phonétique, on l'envoie. Sinon, on envoie le Thaï.
+    res.send(phonetique || data[0][0][0]);
+
   } catch (err) {
-    res.send("Erreur Google");
+    res.send("Erreur");
   }
 };
