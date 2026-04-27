@@ -1,46 +1,44 @@
 const http = require('http');
+// On utilise 'require' car Render tourne sous un Node standard
+const romanize = require('thai-romanization');
 
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://${req.headers.host}`);
   const q = url.searchParams.get('q');
 
+  // On définit l'encodage pour éviter les caractères bizarres
+  res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+
   if (!q) {
-    res.end("Ecris un mot !");
-    return;
+    return res.end("Ecris un mot dans l'URL !");
   }
 
   try {
-    // On change radicalement l'URL pour simuler une requête de dictionnaire
-    const googleUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=fr&tl=th&dt=t&dt=rm&dj=1&q=${encodeURIComponent(q)}`;
-    
-    const response = await fetch(googleUrl, {
-      headers: { 'User-Agent': 'Mozilla/5.0' }
-    });
+    // 1. On récupère la traduction brute (le texte thaï)
+    const googleUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=fr&tl=th&dt=t&q=${encodeURIComponent(q)}`;
+    const response = await fetch(googleUrl);
     const data = await response.json();
-
-    // Avec "dj=1", Google renvoie un JSON structuré (plus facile à lire)
-    let phonetique = "";
     
-    if (data.sentences) {
-      data.sentences.forEach(s => {
-        if (s.src_translit) phonetique = s.src_translit; // Phonétique source
-        if (s.translit) phonetique = s.translit; // Phonétique cible (Thaï)
-      });
+    if (!data || !data[0] || !data[0][0]) {
+        return res.end("Erreur Google");
     }
 
-    if (phonetique) {
-      // Nettoyage des accents
-      const propre = phonetique.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-      res.send(propre);
-    } else {
-      // Si Google ne donne RIEN en phonétique, on tente une ruse : 
-      // on renvoie la traduction mais on ne peut pas forcer la phonétique si elle n'est pas dans le JSON
-      res.end(data.sentences[0].trans);
-    }
+    const texteThai = data[0][0][0];
+
+    // 2. On transforme le thaï en phonétique locale
+    const phonetique = romanize(texteThai);
+
+    // 3. On envoie le résultat final
+    res.end(phonetique || texteThai);
 
   } catch (err) {
-    res.end("Erreur");
+    console.error(err);
+    res.end("Erreur interne du serveur");
   }
 });
 
-server.listen(process.env.PORT || 3000);
+// Port dynamique pour Render
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => {
+  console.log(`Serveur prêt sur le port ${PORT}`);
+});
