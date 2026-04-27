@@ -8,7 +8,6 @@ const server = http.createServer(async (req, res) => {
   if (!q) return res.end("Ecris un mot !");
 
   try {
-    // Nouvelle URL avec TOUS les paramètres de secours
     const googleUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=fr&tl=th&dt=t&dt=rm&q=${encodeURIComponent(q)}`;
     
     const response = await fetch(googleUrl, {
@@ -17,11 +16,8 @@ const server = http.createServer(async (req, res) => {
     const data = await response.json();
 
     let phonetique = "";
-
-    // On fouille partout dans la réponse de Google pour trouver la phonétique
     if (data && data[0]) {
       for (let i = 0; i < data[0].length; i++) {
-        // La phonétique est souvent à l'index 3 ou 2 du bloc de traduction
         if (data[0][i][3]) {
           phonetique = data[0][i][3];
           break;
@@ -31,18 +27,19 @@ const server = http.createServer(async (req, res) => {
       }
     }
 
-    if (phonetique) {
-      // On nettoie les accents pour que ce soit lisible sur Twitch
-      const final = phonetique.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-      res.end(final);
-    } else {
-      // Si vraiment pas de phonétique, on donne le Thaï (mieux que rien !)
-      res.end(data[0][0][0]);
-    }
+    const final = phonetique 
+      ? phonetique.normalize("NFD").replace(/[\u0300-\u036f]/g, "") 
+      : data[0][0][0];
+
+    res.end(final);
 
   } catch (err) {
     res.end("Erreur de service");
   }
 });
 
-server.listen(process.env.PORT || 3000);
+// IMPORTANT : On force l'ecoute sur 0.0.0.0 pour Render
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`Serveur pret sur le port ${PORT}`);
+});
