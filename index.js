@@ -9,36 +9,24 @@ const server = http.createServer(async (req, res) => {
 
   try {
     const googleUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=fr&tl=th&dt=t&dt=rm&q=${encodeURIComponent(q)}`;
-    
-    const response = await fetch(googleUrl, {
-        headers: { 'User-Agent': 'Mozilla/5.0' }
-    });
+    const response = await fetch(googleUrl, { headers: { 'User-Agent': 'Mozilla/5.0' } });
     const data = await response.json();
 
-    let texteThai = data[0][0][0]; // Le texte en thaï (คุณเป็นอย่างไร)
+    let texteThai = data[0][0][0];
     let phonetique = "";
-
-    // On cherche la phonétique dans la réponse
     if (data && data[0]) {
       for (let i = 0; i < data[0].length; i++) {
-        if (data[0][i][3]) {
-          phonetique = data[0][i][3];
-          break;
-        } else if (data[0][i][2]) {
-          phonetique = data[0][i][2];
-        }
+        if (data[0][i][3]) { phonetique = data[0][i][3]; break; }
+        else if (data[0][i][2]) { phonetique = data[0][i][2]; }
       }
     }
 
-    // On nettoie la phonétique
     const phonetiquePropre = phonetique 
       ? phonetique.normalize("NFD").replace(/[\u0300-\u036f]/g, "") 
       : "Phonetique indisponible";
 
-    // ON COMPOSE LA RÉPONSE : Traduction (Thaï) | Prononciation (Phonétique)
-    const reponseFinale = `${texteThai} (${phonetiquePropre})`;
-    
-    res.end(reponseFinale);
+    // LE SERVEUR FAIT TOUT LE TRAVAIL ICI :
+    res.end(`${texteThai} - Prononciation : ${phonetiquePropre}`);
 
   } catch (err) {
     res.end("Erreur de service");
@@ -46,6 +34,4 @@ const server = http.createServer(async (req, res) => {
 });
 
 const PORT = process.env.PORT || 10000;
-server.listen(PORT, '0.0.0.0', () => {
-  console.log(`Serveur pret sur le port ${PORT}`);
-});
+server.listen(PORT, '0.0.0.0');
