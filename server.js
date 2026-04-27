@@ -10,36 +10,36 @@ const server = http.createServer(async (req, res) => {
   }
 
   try {
-    // On utilise l'API la plus stable
-    const googleUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=fr&tl=th&dt=rm&dt=t&q=${encodeURIComponent(q)}`;
+    // On change radicalement l'URL pour simuler une requête de dictionnaire
+    const googleUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=fr&tl=th&dt=t&dt=rm&dj=1&q=${encodeURIComponent(q)}`;
     
-    const response = await fetch(googleUrl);
+    const response = await fetch(googleUrl, {
+      headers: { 'User-Agent': 'Mozilla/5.0' }
+    });
     const data = await response.json();
 
-    // On cherche la phonétique dans la structure exacte de Google
+    // Avec "dj=1", Google renvoie un JSON structuré (plus facile à lire)
     let phonetique = "";
     
-    if (data && data[0]) {
-      // Google place la phonétique dans le premier bloc, à l'index 3 ou 2
-      for (let i = 0; i < data[0].length; i++) {
-        if (data[0][i][3]) {
-          phonetique = data[0][i][3];
-          break;
-        }
-      }
+    if (data.sentences) {
+      data.sentences.forEach(s => {
+        if (s.src_translit) phonetique = s.src_translit; // Phonétique source
+        if (s.translit) phonetique = s.translit; // Phonétique cible (Thaï)
+      });
     }
 
-    // Si on a trouvé la phonétique, on l'envoie sans les accents bizarres
     if (phonetique) {
+      // Nettoyage des accents
       const propre = phonetique.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-      res.end(propre);
+      res.send(propre);
     } else {
-      // Si Google fait encore de la résistance, on donne le mot Thaï par défaut
-      res.end(data[0][0][0]);
+      // Si Google ne donne RIEN en phonétique, on tente une ruse : 
+      // on renvoie la traduction mais on ne peut pas forcer la phonétique si elle n'est pas dans le JSON
+      res.end(data.sentences[0].trans);
     }
 
   } catch (err) {
-    res.end("Probleme de connexion");
+    res.end("Erreur");
   }
 });
 
