@@ -10,24 +10,40 @@ const server = http.createServer(async (req, res) => {
   }
 
   try {
-    const googleUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=fr&tl=th&dt=rm&dt=t&q=${encodeURIComponent(q)}`;
+    // STRATÉGIE : On demande à l'API "Translate" mais via le client "t" (utilisé par Chrome)
+    // C'est souvent la seule qui renvoie la phonétique quand les autres sont bloquées.
+    const googleUrl = `https://translate.googleapis.com/translate_a/single?client=t&sl=fr&tl=th&dt=rm&dt=t&q=${encodeURIComponent(q)}`;
+    
     const response = await fetch(googleUrl, {
-      headers: { 'User-Agent': 'Mozilla/5.0 (Linux; Android 10; SM-A205U) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.138 Mobile Safari/537.36' }
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' }
     });
+    
     const data = await response.json();
 
-    let phonetique = "";
-    if (data && data[0]) {
-      for (let i = 0; i < data[0].length; i++) {
-        if (data[0][i][3]) {
-          phonetique = data[0][i][3];
-          break;
-        }
-      }
+    // La structure "client=t" est différente. La phonétique est cachée ici :
+    let output = "";
+    if (data && data[0] && data[0][0]) {
+        // Dans le mode 't', la phonétique est souvent le dernier élément du premier tableau
+        const row = data[0][0];
+        output = row[row.length - 1]; 
     }
 
-    const final = phonetique ? phonetique.normalize("NFD").replace(/[\u0300-\u036f]/g, "") : data[0][0][0];
-    res.end(final);
+    // Si le résultat contient encore du Thaï, c'est que c'est raté, on nettoie sinon.
+    if (output && !/[\u0E00-\u0E7F]/.test(output)) {
+      const propre = output.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+      res.end(propre);
+    } else {
+      // PLAN DE SECOURS : Si Google boude, on utilise une API de secours (LibreTranslate)
+      const backupUrl = `https://libretranslate.de/translate`;
+      const resBackup = await fetch(backupUrl, {
+        method: "POST",
+        body: JSON.stringify({ q, source: "fr", target: "th", format: "text" }),
+        headers: { "Content-Type": "application/json" }
+      });
+      const dataBackup = await resBackup.json();
+      res.end(dataBackup.translatedText || "Erreur Google");
+    }
+
   } catch (err) {
     res.end("Erreur");
   }
