@@ -15,7 +15,10 @@ const server = http.createServer(async (req, res) => {
     });
     const data = await response.json();
 
+    let texteThai = data[0][0][0]; // Le texte en thaï (คุณเป็นอย่างไร)
     let phonetique = "";
+
+    // On cherche la phonétique dans la réponse
     if (data && data[0]) {
       for (let i = 0; i < data[0].length; i++) {
         if (data[0][i][3]) {
@@ -27,19 +30,22 @@ const server = http.createServer(async (req, res) => {
       }
     }
 
-    const final = phonetique 
+    // On nettoie la phonétique
+    const phonetiquePropre = phonetique 
       ? phonetique.normalize("NFD").replace(/[\u0300-\u036f]/g, "") 
-      : data[0][0][0];
+      : "Phonetique indisponible";
 
-    res.end(final);
+    // ON COMPOSE LA RÉPONSE : Traduction (Thaï) | Prononciation (Phonétique)
+    const reponseFinale = `${texteThai} (${phonetiquePropre})`;
+    
+    res.end(reponseFinale);
 
   } catch (err) {
     res.end("Erreur de service");
   }
 });
 
-// IMPORTANT : On force l'ecoute sur 0.0.0.0 pour Render
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 10000;
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`Serveur pret sur le port ${PORT}`);
 });
