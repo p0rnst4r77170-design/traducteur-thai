@@ -1,4 +1,5 @@
 const http = require('http');
+const troman = require('troman');
 
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://${req.headers.host}`);
@@ -8,22 +9,22 @@ const server = http.createServer(async (req, res) => {
   if (!q) return res.end("Ecris un mot !");
 
   try {
-    // 1. On traduit d'abord (MyMemory est bien pour ça)
+    // 1. Traduction en Thaï
     const trRes = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(q)}&langpair=fr|th`);
     const trData = await trRes.json();
     const thaiText = trData.responseData.translatedText;
 
-    // 2. On force la romanisation via un service tiers (Aitranslate)
-    // On demande comment se prononce le texte thaï qu'on vient d'obtenir
-    const romRes = await fetch(`https://api.translated.net/romanize?text=${encodeURIComponent(thaiText)}&lang=th`);
-    const romData = await romRes.json();
+    // 2. Transformation en phonétique (Romanisation)
+    // On utilise troman.romanize()
+    const phonetique = troman.romanize(thaiText);
 
-    // Si on a la phonétique on l'envoie, sinon on nettoie le texte
-    res.end(romData.romanization || thaiText);
+    // 3. Nettoyage simple des accents pour Twitch
+    const final = phonetique.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    
+    res.end(final);
 
   } catch (err) {
-    // Si l'API de romanisation plante, on tente au moins de donner un truc lisible
-    res.end("Sabai dee mai"); 
+    res.end("Erreur");
   }
 });
 
