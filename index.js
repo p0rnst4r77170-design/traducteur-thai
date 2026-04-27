@@ -8,29 +8,34 @@ const server = http.createServer(async (req, res) => {
   if (!q) return res.end("Ecris un mot !");
 
   try {
-    // Utilisation de l'API Google avec le paramètre 'dt=rm' pour la romanisation
-    const googleUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=fr&tl=th&dt=rm&dt=t&q=${encodeURIComponent(q)}`;
+    // On force la source en français (sl=fr) et la destination en thaï (tl=th)
+    // Et on demande la phonétique (dt=rm)
+    const googleUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=fr&tl=th&dt=t&dt=rm&q=${encodeURIComponent(q)}`;
     
     const response = await fetch(googleUrl);
     const data = await response.json();
 
-    // On récupère la phonétique (index 1 du premier bloc)
+    // Logique pour trouver la phonétique dans le bazar de Google
     let phonetique = "";
-    if (data && data[0] && data[0][1]) {
-        phonetique = data[0][1][3] || data[0][0][1];
+    
+    // Google place souvent la phonétique ici
+    if (data[0] && data[0][1] && data[0][1][3]) {
+        phonetique = data[0][1][3];
+    } else if (data[0] && data[0][0] && data[0][0][1]) {
+        phonetique = data[0][0][1];
     }
 
     if (phonetique) {
-      // Nettoyage des accents pour Twitch
+      // On nettoie les accents pour Twitch
       const final = phonetique.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
       res.end(final);
     } else {
-      // Si échec phonétique, on donne au moins le thaï
+      // Si vraiment pas de phonétique, on donne la traduction thaï (สวัสดี)
       res.end(data[0][0][0]);
     }
 
   } catch (err) {
-    res.end("Erreur de service");
+    res.end("Erreur");
   }
 });
 
