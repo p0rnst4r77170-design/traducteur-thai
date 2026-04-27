@@ -6,18 +6,13 @@ module.exports = async (req, res) => {
 
   try {
     const result = await translate(q, { 
-      from: 'fr',
       to: 'th',
       forceBatch: false 
     });
     
-    // Le secret : result.transliteration contient la phonétique (ex: Sawatdee)
-    // Si elle existe, on l'envoie, sinon on envoie le texte
-    if (result.transliteration) {
-      res.send(result.transliteration);
-    } else {
-      res.send(result.text);
-    }
+    // Si Google renvoie la phonétique (ex: Sawatdee), on l'affiche. 
+    // Sinon on affiche le texte.
+    res.send(result.transliteration || result.text);
   } catch (err) {
     res.send("Erreur de traduction");
   }
