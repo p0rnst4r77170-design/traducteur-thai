@@ -1,22 +1,24 @@
-const translate = require('google-translate-api-x');
-
 module.exports = async (req, res) => {
   const { q } = req.query;
-  if (!q) return res.send("Ecris un texte !");
+  if (!q) return res.send("Ecris un mot !");
 
   try {
-    // On fait la traduction
-    const result = await translate(q, { 
-      to: 'th',
-      forceBatch: false 
-    });
-
-    // On cherche la phonétique dans les données renvoyées par Google
-    // Si 'transliteration' existe, on l'affiche, sinon on donne le texte thaï
-    const reponse = result.transliteration || result.text;
+    // On appelle l'API Google Translate "interne" qui donne la phonétique
+    const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=fr&tl=th&dt=rm&dt=t&q=${encodeURIComponent(q)}`;
     
-    res.send(reponse);
+    const response = await fetch(url);
+    const data = await response.json();
+
+    // data[0][1][3] est l'emplacement standard de la phonétique (romanization)
+    const phonetique = data[0][1] ? data[0][1][3] : null;
+
+    if (phonetique) {
+      res.send(phonetique);
+    } else {
+      // Si pas de phonétique, on donne la traduction thaïe
+      res.send(data[0][0][0]);
+    }
   } catch (err) {
-    res.send("Erreur");
+    res.send("Erreur Google");
   }
 };
