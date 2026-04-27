@@ -1,18 +1,23 @@
-const translate = require('translate-google-v2');
+const translate = require('google-translate-api-x');
 
 module.exports = async (req, res) => {
   const { q } = req.query;
   if (!q) return res.send("Ecris un texte !");
 
   try {
-    // On demande la traduction complète
-    const result = await translate(q, { to: 'th' });
+    const result = await translate(q, { 
+      from: 'fr',
+      to: 'th',
+      forceBatch: false 
+    });
     
-    // result[1] contient généralement la phonétique (romanisation) chez Google
-    // Si Google la donne, on l'affiche, sinon on donne le texte
-    const phonetique = result && result.transliteration ? result.transliteration : result.text;
-    
-    res.send(phonetique);
+    // Le secret : result.transliteration contient la phonétique (ex: Sawatdee)
+    // Si elle existe, on l'envoie, sinon on envoie le texte
+    if (result.transliteration) {
+      res.send(result.transliteration);
+    } else {
+      res.send(result.text);
+    }
   } catch (err) {
     res.send("Erreur de traduction");
   }
