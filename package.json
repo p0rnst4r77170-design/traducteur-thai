@@ -6,6 +6,6 @@
     "start": "node index.js"
   },
   "dependencies": {
-    "troman": "^1.0.3"
+    "thai-romanization": "1.1.0"
   }
 }
