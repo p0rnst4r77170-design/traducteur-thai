@@ -1,11 +1,11 @@
 {
   "name": "traducteur-thai",
   "version": "1.0.0",
-  "main": "server.js",
+  "main": "index.js",
   "dependencies": {
     "thai-romanization": "^1.1.0"
   },
   "scripts": {
-    "start": "node server.js"
+    "start": "node index.js"
   }
 }
