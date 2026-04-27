@@ -5,23 +5,19 @@ module.exports = async (req, res) => {
   if (!q) return res.send("Ecris un texte !");
 
   try {
-    // On force la traduction en Thaï
     const result = await translate(q, { 
-        from: 'fr', 
-        to: 'th', 
-        forceBatch: false // Aide à récupérer la phonétique plus souvent
+      to: 'th',
+      forceBatch: false
     });
-    
-    // Le secret est ici : on cherche le champ 'transliteration'
-    const phonetique = result.transliteration;
 
-    if (phonetique) {
-      res.send(phonetique);
-    } else {
-      // Si la phonétique échoue, on renvoie au moins le texte pour pas avoir d'erreur
-      res.send(result.text); 
-    }
+    // On essaie de récupérer la phonétique (romanisation)
+    // Dans cette version de l'API, c'est souvent dans 'transliteration'
+    let phonetique = result.transliteration;
+
+    // Si la phonétique est vide, on renvoie quand même le texte thaï 
+    // pour ne pas avoir une réponse vide dans le chat
+    res.send(phonetique || result.text);
   } catch (err) {
-    res.send("Erreur Google");
+    res.send("Erreur de traduction");
   }
 };
